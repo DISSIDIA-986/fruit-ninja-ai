@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO26 Fruit Ninja - Computer Vision Final Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #app {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Video background */
+        #video-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror effect */
+            opacity: 0.3;
+        }
+        
+        /* Game canvas */
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        
+        /* UI Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+        
+        /* HUD */
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            pointer-events: auto;
+        }
+        
+        .hud-item {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid #CCFF00;
+            min-width: 120px;
+        }
+        
+        .hud-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        .hud-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #CCFF00;
+        }
+        
+        /* Control buttons */
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: #CCFF00;
+            border: 2px solid #CCFF00;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #CCFF00;
+            color: #000;
+        }
+        
+        /* Status bar */
+        #status-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+        }
+        
+        .status-item {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            border: 1px solid #444;
+        }
+        
+        .status-item.connected {
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .status-item.warning {
+            border-color: #FF9800;
+            color: #FF9800;
+        }
+        
+        /* Start screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        #start-screen.hidden {
+            display: none;
+        }
+        
+        .title {
+            font-size: 64px;
+            font-weight: bold;
+            color: #CCFF00;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #CCFF00;
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #888;
+            margin-bottom: 40px;
+        }
+        
+        .project-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .project-info h3 {
+            color: #CCFF00;
+            margin-bottom: 10px;
+        }
+        
+        .project-info p {
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        #start-button {
+            background: linear-gradient(135deg, #CCFF00, #99CC00);
+            color: #000;
+            border: none;
+            padding: 20px 60px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 30px rgba(204, 255, 0, 0.5);
+        }
+        
+        #start-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px rgba(204, 255, 0, 0.8);
+        }
+        
+        /* Pause screen */
+        #pause-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        #pause-screen.hidden {
+            display: none;
+        }
+        
+        .pause-text {
+            font-size: 48px;
+            color: #CCFF00;
+        }
+        
+        /* Game over screen */
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        #game-over-screen.hidden {
+            display: none;
+        }
+        
+        .game-over-title {
+            font-size: 48px;
+            color: #FF5252;
+            margin-bottom: 20px;
+        }
+        
+        .final-score {
+            font-size: 32px;
+            color: #CCFF00;
+            margin-bottom: 30px;
+        }
+        
+        #restart-button {
+            background: linear-gradient(135deg, #CCFF00, #99CC00);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #restart-button:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Instructions */
+        .instructions {
+            margin-top: 30px;
+            text-align: center;
+            color: #888;
+        }
+        
+        .instructions h4 {
+            color: #CCFF00;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            list-style: none;
+            line-height: 2;
+        }
+        
+        .key {
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #555;
+        }
+        
+        /* Shake animation */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #CCFF00;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Video background -->
+        <video id="video-input" autoplay playsinline muted></video>
+        
+        <!-- Game canvas -->
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <!-- HUD -->
+            <div id="hud">
+                <div class="hud-item">
+                    <div class="hud-label">Score</div>
+                    <div class="hud-value" id="score-value">0</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-label">Time</div>
+                    <div class="hud-value" id="time-remaining">60</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-label">FPS</div>
+                    <div class="hud-value" id="fps-value">0</div>
+                </div>
+            </div>
+            
+            <!-- Control buttons -->
+            <div id="controls">
+                <button class="control-btn" id="mode-toggle">YOLO26 Mode</button>
+                <button class="control-btn" id="music-toggle">🔊</button>
+            </div>
+            
+            <!-- Status bar -->
+            <div id="status-bar">
+                <div class="status-item connected" id="connection-status">
+                    🔌 Connecting...
+                </div>
+                <div class="status-item">
+                    🖥️ M3 Pro + MPS Acceleration
+                </div>
+            </div>
+        </div>
+        
+        <!-- Start screen -->
+        <div id="start-screen">
+            <h1 class="title">🍉 YOLO26 Fruit Ninja</h1>
+            <p class="subtitle">Computer Vision Final Project</p>
+            
+            <div class="project-info">
+                <h3>🎯 Project Overview</h3>
+                <p>
+                    Real-time object detection game using <strong>Ultralytics YOLO26</strong> 
+                    with <strong>MPS acceleration</strong> on Apple M3 Pro.
+                </p>
+                <p style="margin-top: 10px;">
+                    <strong>YOLO26 Advantages:</strong> End-to-End (No NMS), DFL Removed, 
+                    ProgLoss + STAL, MuSGD Optimizer, 43% Faster CPU Inference
+                </p>
+                <p style="margin-top: 10px;">
+                    Detect fruits in real-time and cut them with your mouse or touch!
+                </p>
+            </div>
+            
+            <button id="start-button">START GAME</button>
+            
+            <div class="instructions">
+                <h4>🎮 How to Play</h4>
+                <ul>
+                    <li><span class="key">Mouse</span> or <span class="key">Touch</span> - Cut fruits</li>
+                    <li><span class="key">SPACE</span> - Pause/Resume</li>
+                    <li><span class="key">M</span> - Toggle YOLO/Fallback mode</li>
+                    <li><span class="key">P</span> - Performance monitor</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Pause screen -->
+        <div id="pause-screen" class="hidden">
+            <div class="pause-text">⏸️ PAUSED</div>
+        </div>
+        
+        <!-- Game over screen -->
+        <div id="game-over-screen" class="hidden">
+            <div class="game-over-title">GAME OVER</div>
+            <div class="final-score">Score: <span id="final-score-value">0</span></div>
+            <button id="restart-button">PLAY AGAIN</button>
+        </div>
+    </div>
+    
+    <!-- Game script -->
+    <script type="module" src="./src/index-yolo.js"></script>
+</body>
+</html>
